@@ -121,8 +121,14 @@ class AirCargoProblem(Problem):
             e.g. 'FTTTFF'
         :return: list of Action objects
         """
-        # TODO implement
         possible_actions = []
+        kb = PropKB(decode_state(state, self.state_map).sentence())
+        for action in self.actions_list:
+            if any(condition not in kb.clauses for condition in action.precond_pos):
+                continue
+            if any(condition in kb.clauses for condition in action.precond_neg):
+                continue
+            possible_actions.append(action)
         return possible_actions
 
     def result(self, state: str, action: Action):
@@ -134,9 +140,14 @@ class AirCargoProblem(Problem):
         :param action: Action applied
         :return: resulting state after action
         """
-        # TODO implement
-        new_state = FluentState([], [])
-        return encode_state(new_state, self.state_map)
+        kb = PropKB(decode_state(state, self.state_map).sentence())
+        # Not sure why action.args should be given here instead
+        # of using it as default.
+        action.act(kb, action.args)
+        # FAIL, kb does not have a method to go back to a FluentState?
+        pos_list = [clause for clause in kb.clauses if '~' != clause.__repr__()[0]]
+        neg_list = [clause for clause in kb.clauses if '~' == clause.__repr__()[0]]
+        return encode_state(FluentState(pos_list, neg_list), self.state_map)
 
     def goal_test(self, state: str) -> bool:
         """ Test the state to see if goal is reached
@@ -175,8 +186,8 @@ class AirCargoProblem(Problem):
         conditions by ignoring the preconditions required for an action to be
         executed.
         """
-        # TODO implement (see Russell-Norvig Ed-3 10.2.3  or Russell-Norvig Ed-2 11.2)
-        count = 0
+        kb = PropKB(decode_state(node.state, self.state_map).sentence())
+        count = sum(1 for clause in self.goal if clause not in kb.clauses)
         return count
 
 
